@@ -11,47 +11,80 @@ import categoryRoutes from "./routes/categoryRoutes.js";
 import itineraryRoutes from "./routes/itineraryRoutes.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 
-// Setup __dirname for ES modules
+dotenv.config();
+
+/* ================= SETUP ================= */
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config();
-
 const app = express();
 
-// CORS: Allow Admin Panel, Client Frontend, and localhost dev
-const corsOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(",").map((o) => o.trim())
-  : ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"];
+/* =====================================================
+   ✅ CORS CONFIG (VERY IMPORTANT)
+   Allows:
+   - localhost (dev)
+   - your Vercel admin panel
+   - any future frontend
+===================================================== */
+
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3001",
+  "https://easy-travel-admin-git-main-prathmeshmankar23s-projects.vercel.app",
+];
+
 app.use(
   cors({
-    origin: corsOrigins,
+    origin: function (origin, callback) {
+      // allow requests with no origin (postman, mobile apps, etc.)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS not allowed"));
+      }
+    },
     credentials: true,
   })
 );
+
+/* ================= MIDDLEWARE ================= */
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// API Routes
+/* ================= ROUTES ================= */
+/* NOTE: All APIs start with /api */
+
 app.use("/api/enquiry", enquiryRoutes);
 app.use("/api/destinations", destinationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/itinerary", itineraryRoutes);
 
-// Health check endpoint
+/* ================= HEALTH CHECK ================= */
+
 app.get("/api/health", (req, res) => {
-  res.json({ status: "Backend is running", timestamp: new Date().toISOString() });
+  res.json({
+    status: "Backend running ✅",
+    timestamp: new Date().toISOString(),
+  });
 });
 
-// Error handling middleware
+/* ================= ERROR HANDLING ================= */
+
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5001;
+/* ================= START SERVER ================= */
+/* MUST use process.env.PORT for Render */
+
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Backend API Server running on http://localhost:${PORT}`);
-  console.log(`📡 API: http://localhost:${PORT}/api`);
-  console.log(`💚 Health Check: http://localhost:${PORT}/api/health`);
+  console.log(`🚀 Backend running on port ${PORT}`);
 });
