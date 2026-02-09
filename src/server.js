@@ -21,33 +21,13 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 /* =====================================================
-   ✅ CORS CONFIG (VERY IMPORTANT)
-   Allows:
-   - localhost (dev)
-   - your Vercel admin panel
-   - any future frontend
+   ✅ SIMPLE CORS (Fixes ALL Vercel + localhost issues)
+   Allows any frontend to access backend
 ===================================================== */
-
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "http://127.0.0.1:3000",
-  "http://127.0.0.1:3001",
-  "https://easy-travel-admin-git-main-prathmeshmankar23s-projects.vercel.app",
-];
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin (postman, mobile apps, etc.)
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS not allowed"));
-      }
-    },
+    origin: true, // allow all origins automatically
     credentials: true,
   })
 );
@@ -58,7 +38,6 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 /* ================= ROUTES ================= */
-/* NOTE: All APIs start with /api */
 
 app.use("/api/enquiry", enquiryRoutes);
 app.use("/api/destinations", destinationRoutes);
@@ -81,7 +60,6 @@ app.use(notFound);
 app.use(errorHandler);
 
 /* ================= START SERVER ================= */
-/* MUST use process.env.PORT for Render */
 
 const PORT = process.env.PORT || 5000;
 
