@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//////////////////////////////////////////////////////
+// CATEGORY
+//////////////////////////////////////////////////////
+model Category {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  slug         String        @unique
+  isActive     Boolean       @default(true)
+  destinations Destination[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime?
+
+  @@index([deletedAt])
+}
+
+//////////////////////////////////////////////////////
+// DESTINATION  (Main Trip / Package)
+//////////////////////////////////////////////////////
+model Destination {
+  id            String    @id @default(cuid())
+  title         String
+  img           String    // Changed from 'image' to 'img' to match Frontend
+  description   String    @db.Text
+  price         String    // Changed to String to match '₹1,07,907' format in Frontend
+  rating        Float     @default(4.9)
+  duration      String
+  nights        Int?      // Added nights field
+  groupSize     String
+  about         String    @db.Text
+  highlights    String[]
+
+  // Simplified to String arrays to match Admin Panel and Frontend logic
+  included      String[]  
+  notIncluded   String[]
+
+  categoryId    String
+  category      Category  @relation(fields: [categoryId], references: [id])
+
+  itinerary     Itinerary[] // Renamed from 'itineraries' to match Frontend
+  enquiries     Enquiry[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  @@index([categoryId])
+  @@index([deletedAt])
+}
+
+//////////////////////////////////////////////////////
+// ITINERARY (Day by Day Plan)
+//////////////////////////////////////////////////////
+model Itinerary {
+  id            String      @id @default(cuid())
+  day           Int
+  title         String
+  desc          String      @db.Text // Matches 'desc' in Frontend
+  image         String?
+  activities    String[]
+
+  destinationId String
+  destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+
+  @@index([destinationId])
+  @@index([deletedAt])
+}
+
+//////////////////////////////////////////////////////
+// ENQUIRY  (Store + Send Email)
+//////////////////////////////////////////////////////
+model Enquiry {
+  id            String       @id @default(cuid())
+  customerName  String
+  email         String
+  phone         String
+  message       String?      @db.Text
+
+  destinationId String?
+  destination   Destination? @relation(fields: [destinationId], references: [id])
+
+  createdAt     DateTime     @default(now())
+  deletedAt     DateTime?
+
+  @@index([email])
+  @@index([destinationId])
+  @@index([deletedAt])
+}
+
+//////////////////////////////////////////////////////
+// ADMIN (JWT Login)
+//////////////////////////////////////////////////////
+model Admin {
+  id        String    @id @default(cuid())
+  username  String    @unique
+  email     String    @unique
+  password  String
+  role      AdminRole @default(ADMIN)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([deletedAt])
+}
+
+enum AdminRole {
+  ADMIN
+  SUPER_ADMIN
+}

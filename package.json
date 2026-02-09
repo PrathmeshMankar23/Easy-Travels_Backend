@@ -1,0 +1,35 @@
+{
+  "name": "travel-backend",
+  "version": "1.0.0",
+  "description": "Easy Travels Backend API",
+  "type": "module",
+
+  "main": "src/server.js",
+
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+
+    "prisma:generate": "npx prisma generate",
+    "prisma:push": "npx prisma db push",
+    "prisma:migrate": "npx prisma migrate dev",
+    "prisma:studio": "npx prisma studio"
+  },
+
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.9.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.4",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.0.2",
+    "nodemailer": "^8.0.0"
+  },
+
+  "devDependencies": {
+    "nodemon": "^3.1.11",
+    "prisma": "^5.22.0"
+  }
+}
