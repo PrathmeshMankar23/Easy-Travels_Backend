@@ -92,7 +92,8 @@ const sendEnquiryEmail = async (enquiry) => {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
+    console.log("📧 Enquiry email sent to:", toAddress, "id:", info.messageId);
   } catch (error) {
     console.error("Email sending failed:", error);
   }
