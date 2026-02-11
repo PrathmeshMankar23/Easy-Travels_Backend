@@ -1,5 +1,5 @@
 import prisma from "../lib/prisma.js";
-import nodemailer from "nodemailer";
+import transporter from "../lib/mailer.js";
 
 // GET ALL: Fetch all enquiries for admin
 export const getAllEnquiries = async (req, res) => {
@@ -66,19 +66,20 @@ export const deleteEnquiry = async (req, res) => {
 // Email sending function
 const sendEnquiryEmail = async (enquiry) => {
   try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+    // Always send TO the SMTP user, as requested
+    const fromAddress =
+      process.env.SMTP_USER ||
+      process.env.EMAIL_USER ||
+      "no-reply@easy-travels.local";
+    const toAddress =
+      process.env.SMTP_USER ||
+      process.env.EMAIL_USER ||
+      process.env.ADMIN_EMAIL;
 
     const mailOptions = {
-      from: process.env.SMTP_USER,
-      to: process.env.ADMIN_EMAIL || process.env.SMTP_USER,
+      from: fromAddress,
+      to: toAddress,
+      replyTo: enquiry.email || undefined,
       subject: `New Travel Enquiry - ${enquiry.customerName}`,
       html: `
         <h2>New Travel Enquiry</h2>
