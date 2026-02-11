@@ -1,38 +1,36 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const HOST = process.env.SMTP_HOST || "smtp.gmail.com";
-const PORT = Number(process.env.SMTP_PORT || 587);
-const USER = process.env.SMTP_USER || process.env.EMAIL_USER;
-const PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+// ✅ Validate ENV early (prevents hidden bugs)
+if (!process.env.RESEND_API_KEY) {
+  console.error("❌ RESEND_API_KEY is missing in environment variables");
+}
 
-const transporter = nodemailer.createTransport({
-  host: HOST,
-  port: PORT,
-  secure: false, // Gmail 587 uses TLS
-  requireTLS: true, // ⭐ force TLS
+if (!process.env.RESEND_FROM) {
+  console.error("❌ RESEND_FROM is missing in environment variables");
+}
 
-  auth: {
-    user: USER,
-    pass: PASS,
-  },
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-  tls: {
-    family: 4, // ⭐⭐⭐ FORCE IPv4 (FIXES Render ENETUNREACH)
-  },
 
-  connectionTimeout: 10000,
-});
+// ✅ Common mail function
+export const sendMail = async ({ to, subject, html }) => {
+  try {
+    const response = await resend.emails.send({
+      from: process.env.RESEND_FROM,   // must be verified sender in Resend
+      to,
+      subject,
+      html,
+    });
 
-// Debug
-transporter.verify((error) => {
-  if (error) {
-    console.error("❌ SMTP Error:", error);
-  } else {
-    console.log("✅ SMTP Ready");
+    console.log("📧 Email sent successfully → id:", response.data?.id);
+
+    return response.data;
+
+  } catch (error) {
+    console.error("❌ Resend email failed:", error.message);
+    throw error;
   }
-});
-
-export default transporter;
+};
