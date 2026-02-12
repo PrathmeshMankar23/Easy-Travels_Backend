@@ -17,6 +17,32 @@ export const getAllDestinations = async (req, res) => {
   }
 };
 
+// GET BY ID: For single destination details (public and admin)
+export const getDestinationById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const destination = await prisma.destination.findFirst({
+      where: { 
+        id: id,
+        deletedAt: null // Only fetch if not deleted
+      },
+      include: {
+        itinerary: { orderBy: { day: 'asc' } },
+        category: true,
+      },
+    });
+
+    if (!destination) {
+      return res.status(404).json({ error: "Destination not found" });
+    }
+
+    res.json(destination);
+  } catch (error) {
+    console.error("Get destination by ID error:", error);
+    res.status(500).json({ error: "Failed to fetch destination" });
+  }
+};
+
 // CREATE: Saves new trip from Admin Panel
 export const createDestination = async (req, res) => {
   try {
