@@ -10,7 +10,7 @@ export const simpleCreateAdmin = async (req, res) => {
     // Hardcode admin data to avoid any body parsing issues
     const adminData = {
       username: 'admin',
-      email: 'admin@easytravels.com',
+      email: 'administrator@easytravels.com',
       password: 'admin123',
       role: 'ADMIN'
     };
