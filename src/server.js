@@ -9,6 +9,8 @@ import destinationRoutes from "./routes/destinationRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import itineraryRoutes from "./routes/itineraryRoutes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";   // ⭐ NEW
+
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 
 dotenv.config();
@@ -22,12 +24,11 @@ const app = express();
 
 /* =====================================================
    ✅ SIMPLE CORS (Fixes ALL Vercel + localhost issues)
-   Allows any frontend to access backend
 ===================================================== */
 
 app.use(
   cors({
-    origin: true, // allow all origins automatically
+    origin: true,
     credentials: true,
   })
 );
@@ -44,6 +45,9 @@ app.use("/api/destinations", destinationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/itinerary", itineraryRoutes);
+
+/* ⭐ REVIEW ROUTES (NEW) */
+app.use("/api/reviews", reviewRoutes);
 
 /* ================= HEALTH CHECK ================= */
 
@@ -66,4 +70,3 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Backend running on port ${PORT}`);
 });
-  

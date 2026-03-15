@@ -48,6 +48,7 @@ model Destination {
 
   itinerary     Itinerary[] // Renamed from 'itineraries' to match Frontend
   enquiries     Enquiry[]
+  reviews       Review[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -101,6 +102,31 @@ model Enquiry {
 }
 
 //////////////////////////////////////////////////////
+// REVIEW (User Reviews with Admin Approval)
+//////////////////////////////////////////////////////
+model Review {
+  id            String   @id @default(cuid())
+  name          String
+  email         String?
+  rating        Int
+  review        String   @db.Text
+  isApproved    Boolean  @default(false)
+  status        ReviewStatus @default(PENDING)
+  
+  destinationId String?
+  destination   Destination? @relation(fields: [destinationId], references: [id])
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  @@index([destinationId])
+  @@index([isApproved])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+//////////////////////////////////////////////////////
 // ADMIN (JWT Login)
 //////////////////////////////////////////////////////
 model Admin {
@@ -119,4 +145,10 @@ model Admin {
 enum AdminRole {
   ADMIN
   SUPER_ADMIN
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
