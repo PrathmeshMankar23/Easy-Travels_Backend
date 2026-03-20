@@ -12,9 +12,6 @@ import categoryRoutes from "./routes/categoryRoutes.js";
 import itineraryRoutes from "./routes/itineraryRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 
-// ✅ IMPORT MAIL FUNCTION
-import { sendMail } from "./lib/mailer.js";
-
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 
 dotenv.config();
@@ -49,24 +46,6 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/itinerary", itineraryRoutes);
 app.use("/api/reviews", reviewRoutes);
 
-/* ================= TEST MAIL ROUTE ================= */
-
-app.get("/test-mail", async (req, res) => {
-  try {
-    console.log("🔥 Test mail route hit");
-
-    await sendMail({
-      to: "prathmesh73831@gmail.com",
-      subject: "Test Mail",
-      html: "<h1>SMTP Working ✅</h1>",
-    });
-
-    res.send("Mail Sent ✅");
-  } catch (err) {
-    console.log("❌ ERROR:", err);
-    res.status(500).send("Mail Failed ❌");
-  }
-});
 
 /* ================= HEALTH CHECK ================= */
 

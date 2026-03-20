@@ -5,7 +5,10 @@ const router = express.Router();
 
 router.post("/", async (req, res) => {
   try {
-    const { name, email, message } = req.body;
+    const { name, email, message, review, phone } = req.body;
+
+    // fallback fix
+    const finalMessage = message || review || "No message provided";
 
     console.log("📩 New enquiry received");
 
@@ -16,11 +19,12 @@ router.post("/", async (req, res) => {
       to: process.env.ADMIN_EMAIL,
       subject: "📩 New Enquiry from Website",
       html: `
-        <h2>New Enquiry</h2>
-        <p><b>Name:</b> ${name}</p>
-        <p><b>Email:</b> ${email}</p>
-        <p><b>Message:</b> ${message}</p>
-      `,
+    <h2>New Enquiry</h2>
+    <p><b>Name:</b> ${name}</p>
+    <p><b>Email:</b> ${email}</p>
+    <p><b>Phone:</b> ${phone || "N/A"}</p>
+    <p><b>Message:</b> ${finalMessage}</p>
+  `,
     });
 
     console.log("📧 Enquiry email sent");
