@@ -1,36 +1,65 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-// ✅ Validate ENV early (prevents hidden bugs)
-if (!process.env.RESEND_API_KEY) {
-  console.error("❌ RESEND_API_KEY is missing in environment variables");
-}
+let envTransporter = null;
 
-if (!process.env.RESEND_FROM) {
-  console.error("❌ RESEND_FROM is missing in environment variables");
-}
+const createEnvTransporter = async () => {
+  if (envTransporter) return envTransporter;
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.error("❌ SMTP credentials missing");
+    return null;
+  }
 
+  const port = Number(process.env.SMTP_PORT ?? 587);
 
-// ✅ Common mail function
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port,
+      secure: port === 465,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+      requireTLS: port === 587,
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+
+    await transporter.verify();
+    console.log("✅ SMTP ready");
+
+    envTransporter = transporter;
+    return transporter;
+
+  } catch (error) {
+    console.error("❌ SMTP connection failed:", error.message);
+    return null;
+  }
+};
+
 export const sendMail = async ({ to, subject, html }) => {
   try {
-    const response = await resend.emails.send({
-      from: process.env.RESEND_FROM,   // must be verified sender in Resend
+    const transporter = await createEnvTransporter();
+
+    if (!transporter) throw new Error("SMTP not initialized");
+
+    const info = await transporter.sendMail({
+      from: `"Easy Travels" <${process.env.SMTP_USER}>`,
       to,
       subject,
       html,
     });
 
-    console.log("📧 Email sent successfully → id:", response.data?.id);
-
-    return response.data;
+    console.log("📧 Email sent:", info.messageId);
+    return info;
 
   } catch (error) {
-    console.error("❌ Resend email failed:", error.message);
+    console.error("❌ Mail failed:", error.message);
     throw error;
   }
 };
