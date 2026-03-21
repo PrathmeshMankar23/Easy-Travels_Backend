@@ -1,7 +1,11 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import dns from "dns";
 
 dotenv.config();
+
+// Force IPv4 for dns resolution to avoid IPv6 connection timeouts on Render
+dns.setDefaultResultOrder("ipv4first");
 
 let envTransporter = null;
 
