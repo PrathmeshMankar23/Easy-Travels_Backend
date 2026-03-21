@@ -20,10 +20,16 @@ const createEnvTransporter = async () => {
   }
 
   const port = Number(process.env.SMTP_PORT ?? 587);
+  const hostName = process.env.SMTP_HOST || "smtp.gmail.com";
 
   try {
+    // RESOLVER FIX: Forcefully fetch the IPv4 address of the SMTP server
+    // This entirely avoids Node.js silently trying to use IPv6 on Render
+    const ipv4Addresses = await dns.promises.resolve4(hostName);
+    const hostIp = ipv4Addresses[0];
+
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      host: hostIp, // Use the resolved IPv4 string directly
       port: port,
       secure: port === 465, // true only for 465
       auth: {
@@ -33,6 +39,7 @@ const createEnvTransporter = async () => {
       requireTLS: port === 587,
       tls: {
         rejectUnauthorized: false, // helps on Render
+        servername: hostName,      // Ensure the TLS certificate still matches the domain name!
       },
     });
 
