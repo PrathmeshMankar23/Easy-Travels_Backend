@@ -1,68 +1,60 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
-import dns from "dns";
+import { Resend } from "resend";
 
 dotenv.config();
 
-// Force IPv4 for dns resolution to avoid IPv6 connection timeouts on Render
-dns.setDefaultResultOrder("ipv4first");
-
 let envTransporter = null;
 
-// ✅ Create transporter (only once)
-const createEnvTransporter = async () => {
+const createEnvTransporter = () => {
   if (envTransporter) return envTransporter;
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) return null;
 
-  // ❌ Validate ENV
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.error("❌ SMTP credentials missing in ENV");
-    return null;
-  }
+  const port = Number(process.env.SMTP_PORT ?? 465);
+  
+  const options = {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port,
+    secure: port === 465,
+    requireTLS: port === 587,
+    auth: { 
+      user: process.env.SMTP_USER, 
+      pass: process.env.SMTP_PASS 
+    },
+    tls: { 
+      // Changed to false as Render environments often hit self-signed CA issues with Google SMTP proxies
+      rejectUnauthorized: false 
+    }
+  };
 
-  const port = Number(process.env.SMTP_PORT ?? 587);
-  const hostName = process.env.SMTP_HOST || "smtp.gmail.com";
-
-  try {
-    // RESOLVER FIX: Forcefully fetch the IPv4 address of the SMTP server
-    // This entirely avoids Node.js silently trying to use IPv6 on Render
-    const ipv4Addresses = await dns.promises.resolve4(hostName);
-    const hostIp = ipv4Addresses[0];
-
-    const transporter = nodemailer.createTransport({
-      host: hostIp, // Use the resolved IPv4 string directly
-      port: port,
-      secure: port === 465, // true only for 465
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-      requireTLS: port === 587,
-      tls: {
-        rejectUnauthorized: false, // helps on Render
-        servername: hostName,      // Ensure the TLS certificate still matches the domain name!
-      },
-    });
-
-    // ✅ Verify connection (VERY IMPORTANT)
-    await transporter.verify();
-    console.log("✅ SMTP server is ready to send emails");
-
-    envTransporter = transporter;
-    return transporter;
-
-  } catch (error) {
-    console.error("❌ SMTP connection failed:", error.message);
-    return null;
-  }
+  envTransporter = nodemailer.createTransport(options);
+  return envTransporter;
 };
 
-// ✅ Main mail function
 export const sendMail = async ({ to, subject, html }) => {
   try {
-    const transporter = await createEnvTransporter();
+    // 1. Resend API Fallback (Safe fallback if Render absolutely drops SMTP entirely)
+    if (process.env.RESEND_API_KEY) {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const resendFrom = process.env.RESEND_FROM || "onboarding@resend.dev";
+      
+      const { data, error } = await resend.emails.send({
+        from: `Travel Website <${resendFrom}>`,
+        to,
+        subject,
+        html,
+      });
+
+      if (error) throw error;
+      console.log("📧 Email sent successfully via Resend API →", data?.id);
+      return data;
+    }
+
+    // 2. Exact Nodemailer implementation from snippet
+    const transporter = createEnvTransporter();
 
     if (!transporter) {
-      throw new Error("SMTP transporter not initialized");
+      throw new Error("❌ SMTP transporter could not be initialized (Missing ENV variables).");
     }
 
     const info = await transporter.sendMail({
@@ -72,12 +64,11 @@ export const sendMail = async ({ to, subject, html }) => {
       html,
     });
 
-    console.log("📧 Email sent via SMTP →", info.messageId);
-
+    console.log("📧 Email sent successfully via Nodemailer SMTP →", info.messageId);
     return info;
 
   } catch (error) {
-    console.error("❌ SMTP email failed:", error.message);
+    console.error("❌ Email sending failed:", error.message);
     throw error;
   }
 };
