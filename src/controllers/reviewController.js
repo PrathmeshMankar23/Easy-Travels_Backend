@@ -11,7 +11,7 @@ export const submitReview = async (req, res) => {
       data: {
         name,
         email,
-        rating,
+        rating: parseInt(rating),
         review,
         isApproved: false
       }
@@ -74,11 +74,16 @@ export const updateReviewStatus = async (req, res) => {
   try {
 
     const { id } = req.params;
-    const { isApproved } = req.body;
+    const { isApproved, status } = req.body;
+
+    const updateData = { isApproved };
+    if (status) {
+      updateData.status = status;
+    }
 
     const updatedReview = await prisma.review.update({
       where: { id },
-      data: { isApproved }
+      data: updateData
     });
 
     res.json(updatedReview);
