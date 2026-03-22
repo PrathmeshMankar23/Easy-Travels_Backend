@@ -17,7 +17,7 @@ router.post("/", async (req, res) => {
     // ✅ SEND EMAIL TO ADMIN
     await sendMail({
       to: process.env.ADMIN_EMAIL,
-      subject: "📩 New Enquiry from Website",
+      subject: "📩 New Enquiry",
       html: `
     <h2>New Enquiry</h2>
     <p><b>Name:</b> ${name}</p>
