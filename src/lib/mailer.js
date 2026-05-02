@@ -21,20 +21,21 @@ const createEnvTransporter = () => {
   if (!SMTP_USER || !SMTP_PASS) return null;
 
   const options = {
-    host: "smtp.gmail.com",
+    // Hardcoded IPv4 for Gmail to completely bypass Render's IPv6 routing issues
+    host: "74.125.136.108", 
     port: 587,
-    secure: false, // Port 587 requires secure: false
+    secure: false,
     auth: { 
       user: SMTP_USER, 
       pass: SMTP_PASS 
     },
     tls: { 
-      // Sometimes needed for cloud compatibility
-      rejectUnauthorized: false 
+      rejectUnauthorized: false,
+      // Must specify servername when using IP host so certificate remains valid
+      servername: "smtp.gmail.com" 
     },
-    connectionTimeout: 15000, // Increased timeout for slow cloud connections
-    greetingTimeout: 15000,
-    family: 4 // Force IPv4
+    connectionTimeout: 20000,
+    greetingTimeout: 20000
   };
 
   envTransporter = nodemailer.createTransport(options);
