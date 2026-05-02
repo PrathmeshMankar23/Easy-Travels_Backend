@@ -24,15 +24,18 @@ const createEnvTransporter = () => {
   const options = {
     host: SMTP_HOST || 'smtp.gmail.com',
     port,
-    secure: port === 465,
+    secure: port === 465, // true for 465, false for 587
     auth: { 
       user: SMTP_USER, 
       pass: SMTP_PASS 
     },
     tls: { 
       // Bypass self-signed certificate issues often found in cloud environments
-      rejectUnauthorized: false 
-    }
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2'
+    },
+    // Force IPv4 as cloud environments often have issues reaching Gmail via IPv6
+    family: 4 
   };
 
   envTransporter = nodemailer.createTransport(options);
@@ -54,7 +57,7 @@ const createEnvTransporter = () => {
  */
 export const sendMail = async ({ to, subject, html, fromName = "Travel Website" }) => {
   try {
-    // 1. Resend API Fallback
+    /* 1. Resend API Fallback (Commented Out as requested)
     if (process.env.RESEND_API_KEY) {
       const resend = new Resend(process.env.RESEND_API_KEY);
       const resendFrom = process.env.RESEND_FROM || "onboarding@resend.dev";
@@ -72,6 +75,7 @@ export const sendMail = async ({ to, subject, html, fromName = "Travel Website" 
       }
       console.warn("⚠️ Resend delivery failed, trying SMTP...");
     }
+    */
 
     // 2. Nodemailer SMTP Implementation
     const transporter = createEnvTransporter();
