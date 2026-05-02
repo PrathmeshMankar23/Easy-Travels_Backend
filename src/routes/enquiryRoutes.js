@@ -1,46 +1,27 @@
 import express from "express";
-import { sendMail } from "../lib/mailer.js";
+import { createEnquiry, getAllEnquiries, deleteEnquiry } from "../controllers/enquiryController.js";
 
 const router = express.Router();
 
-router.post("/", async (req, res) => {
-  try {
-    const { name, email, message, review, phone } = req.body;
+/**
+ * @route   POST /api/enquiry
+ * @desc    Submit a new enquiry
+ * @access  Public
+ */
+router.post("/", createEnquiry);
 
-    // fallback fix
-    const finalMessage = message || review || "No message provided";
+/**
+ * @route   GET /api/enquiry
+ * @desc    Get all active enquiries
+ * @access  Private (Admin)
+ */
+router.get("/", getAllEnquiries);
 
-    console.log("📩 New enquiry received");
-
-    // 👉 (Optional: save to DB here)
-
-    // ✅ SEND EMAIL TO ADMIN
-    await sendMail({
-      to: process.env.ADMIN_EMAIL,
-      subject: "📩 New Enquiry",
-      html: `
-    <h2>New Enquiry</h2>
-    <p><b>Name:</b> ${name}</p>
-    <p><b>Email:</b> ${email}</p>
-    <p><b>Phone:</b> ${phone || "N/A"}</p>
-    <p><b>Message:</b> ${finalMessage}</p>
-  `,
-    });
-
-    console.log("📧 Enquiry email sent");
-
-    res.status(200).json({
-      success: true,
-      message: "Enquiry submitted successfully",
-    });
-
-  } catch (error) {
-    console.error("❌ Enquiry Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to submit enquiry",
-    });
-  }
-});
+/**
+ * @route   DELETE /api/enquiry/:id
+ * @desc    Soft delete an enquiry
+ * @access  Private (Admin)
+ */
+router.delete("/:id", deleteEnquiry);
 
 export default router;

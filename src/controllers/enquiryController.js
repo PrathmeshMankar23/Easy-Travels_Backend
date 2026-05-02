@@ -1,5 +1,5 @@
 import prisma from "../lib/prisma.js";
-import { sendMail } from "../lib/mailer.js";
+import { sendEnquiryEmail } from "../lib/mailer.js";
 
 // GET ALL
 export const getAllEnquiries = async (req, res) => {
@@ -26,7 +26,7 @@ export const createEnquiry = async (req, res) => {
   try {
     const { customerName, name, email, phone, message, destinationId } = req.body;
 
-    const finalName = customerName || name || "";
+    const finalName = customerName || name || "Anonymous";
 
     // Save to DB
     const enquiry = await prisma.enquiry.create({
@@ -40,29 +40,30 @@ export const createEnquiry = async (req, res) => {
       include: { destination: true }
     });
 
-    // ✅ Send email via Resend
-    await sendMail({
-      to: process.env.ADMIN_EMAIL,
-      subject: `New Travel Enquiry - ${finalName}`,
-      html: `
-        <h2>New Travel Enquiry</h2>
-        <p><b>Name:</b> ${finalName}</p>
-        <p><b>Email:</b> ${email}</p>
-        <p><b>Phone:</b> ${phone}</p>
-        ${enquiry.destination ? `<p><b>Destination:</b> ${enquiry.destination.title}</p>` : ""}
-        ${message ? `<p><b>Message:</b> ${message}</p>` : ""}
-      `
-    });
-
-    console.log("📧 Email sent to admin");
+    // ✅ Send professional email to admin
+    try {
+      await sendEnquiryEmail({
+        customerName: finalName,
+        email,
+        phone,
+        message,
+        destinationTitle: enquiry.destination?.title || "General Interest"
+      });
+      console.log("📧 Enquiry email sent to admin successfully");
+    } catch (emailError) {
+      console.error("⚠️ Enquiry saved but email failed:", emailError.message);
+      // We don't fail the entire request if just the email fails, 
+      // but the user might want to know.
+    }
 
     res.status(201).json(enquiry);
 
   } catch (error) {
-    console.error(error);
+    console.error("❌ Failed to submit enquiry:", error);
     res.status(500).json({ error: "Failed to submit enquiry" });
   }
 };
+
 
 
 // DELETE
