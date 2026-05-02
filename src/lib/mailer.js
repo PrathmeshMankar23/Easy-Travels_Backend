@@ -11,7 +11,7 @@ dotenv.config();
 let envTransporter = null;
 
 /**
- * Creates and configures the SMTP transporter
+ * Creates and configures the SMTP transporter (Using proven GigFactory logic)
  */
 const createEnvTransporter = () => {
   if (envTransporter) return envTransporter;
@@ -20,25 +20,18 @@ const createEnvTransporter = () => {
   
   if (!SMTP_USER || !SMTP_PASS) return null;
 
-  const options = {
-    // Hardcoded IPv4 for Gmail to completely bypass Render's IPv6 routing issues
-    host: "74.125.136.108", 
-    port: 587,
-    secure: false,
-    auth: { 
-      user: SMTP_USER, 
-      pass: SMTP_PASS 
+  envTransporter = nodemailer.createTransport({
+    host: SMTP_HOST || 'smtp.gmail.com',
+    port: Number(SMTP_PORT) || 465,
+    secure: Number(SMTP_PORT) === 465,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
     },
-    tls: { 
-      rejectUnauthorized: false,
-      // Must specify servername when using IP host so certificate remains valid
-      servername: "smtp.gmail.com" 
-    },
-    connectionTimeout: 20000,
-    greetingTimeout: 20000
-  };
-
-  envTransporter = nodemailer.createTransport(options);
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
   
   // Verify connection
   envTransporter.verify((error) => {
