@@ -8,79 +8,40 @@ dns.setDefaultResultOrder("ipv4first");
 
 dotenv.config();
 
-let envTransporter = null;
+const { SMTP_USER, SMTP_PASS, SMTP_HOST, SMTP_PORT } = process.env;
+
+// Create transporter at top level like GigFactory
+const transporter = nodemailer.createTransport({
+  host: SMTP_HOST || 'smtp.gmail.com',
+  port: Number(SMTP_PORT) || 465,
+  secure: Number(SMTP_PORT) === 465,
+  auth: {
+    user: SMTP_USER,
+    pass: SMTP_PASS,
+  },
+  tls: {
+    rejectUnauthorized: false
+  },
+  logger: true,
+  debug: true
+});
+
+// Verify connection immediately
+transporter.verify((error) => {
+  if (error) {
+    console.error("❌ SMTP Connection Error:", error.message);
+  } else {
+    console.log("✅ SMTP Transporter is ready to deliver messages");
+  }
+});
 
 /**
- * Creates and configures the SMTP transporter (Using proven GigFactory logic)
- */
-const createEnvTransporter = () => {
-  if (envTransporter) return envTransporter;
-  
-  const { SMTP_USER, SMTP_PASS, SMTP_HOST, SMTP_PORT } = process.env;
-  
-  if (!SMTP_USER || !SMTP_PASS) return null;
-
-  envTransporter = nodemailer.createTransport({
-    host: SMTP_HOST || 'smtp.gmail.com',
-    port: Number(SMTP_PORT) || 465,
-    secure: Number(SMTP_PORT) === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-    tls: {
-      rejectUnauthorized: false
-    },
-    logger: true,
-    debug: true
-  });
-  
-  // Verify connection
-  envTransporter.verify((error) => {
-    if (error) {
-      console.error("❌ SMTP Connection Error:", error.message);
-    } else {
-      console.log("✅ SMTP Transporter is ready to deliver messages");
-    }
-  });
-
-  return envTransporter;
-};
-
-/**
- * General purpose mail sender with Resend fallback
+ * General purpose mail sender
  */
 export const sendMail = async ({ to, subject, html, fromName = "Travel Website" }) => {
   try {
-    /* 1. Resend API Fallback (Commented Out as requested)
-    if (process.env.RESEND_API_KEY) {
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      const resendFrom = process.env.RESEND_FROM || "onboarding@resend.dev";
-      
-      const { data, error } = await resend.emails.send({
-        from: `${fromName} <${resendFrom}>`,
-        to,
-        subject,
-        html,
-      });
-
-      if (!error) {
-        console.log("📧 Email sent successfully via Resend API →", data?.id);
-        return data;
-      }
-      console.warn("⚠️ Resend delivery failed, trying SMTP...");
-    }
-    */
-
-    // 2. Nodemailer SMTP Implementation
-    const transporter = createEnvTransporter();
-
-    if (!transporter) {
-      throw new Error("SMTP transporter could not be initialized (Missing ENV variables).");
-    }
-
     const info = await transporter.sendMail({
-      from: `"${fromName}" <${process.env.SMTP_USER}>`,
+      from: `"${fromName}" <${SMTP_USER}>`,
       to,
       subject,
       html,
@@ -100,7 +61,7 @@ export const sendMail = async ({ to, subject, html, fromName = "Travel Website" 
  */
 export const sendEnquiryEmail = async (enquiryData) => {
   const { customerName, email, phone, message, destinationTitle } = enquiryData;
-  const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
+  const adminEmail = process.env.ADMIN_EMAIL || SMTP_USER;
 
   const html = `
     <!DOCTYPE html>
@@ -161,4 +122,4 @@ export const sendEnquiryEmail = async (enquiryData) => {
     subject: `New Travel Enquiry: ${customerName}`,
     html,
   });
-};
+};
