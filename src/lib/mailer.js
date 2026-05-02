@@ -1,6 +1,10 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import { Resend } from "resend";
+import dns from "dns";
+
+// Force IPv4 as cloud environments like Render often have issues with IPv6 routing
+dns.setDefaultResultOrder("ipv4first");
 
 dotenv.config();
 
@@ -17,15 +21,19 @@ const createEnvTransporter = () => {
   if (!SMTP_USER || !SMTP_PASS) return null;
 
   const options = {
-    service: 'gmail',
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false, // Port 587 requires secure: false
     auth: { 
       user: SMTP_USER, 
       pass: SMTP_PASS 
     },
     tls: { 
-      rejectUnauthorized: true 
+      // Sometimes needed for cloud compatibility
+      rejectUnauthorized: false 
     },
-    family: 4
+    connectionTimeout: 15000, // Increased timeout for slow cloud connections
+    greetingTimeout: 15000
   };
 
   envTransporter = nodemailer.createTransport(options);
