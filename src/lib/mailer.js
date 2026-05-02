@@ -16,13 +16,8 @@ const createEnvTransporter = () => {
   
   if (!SMTP_USER || !SMTP_PASS) return null;
 
-  const port = Number(SMTP_PORT ?? 465);
-  
   const options = {
-    host: SMTP_HOST || 'smtp.gmail.com',
-    port,
-    secure: port === 465,
-    requireTLS: port === 587,
+    service: 'gmail',
     auth: { 
       user: SMTP_USER, 
       pass: SMTP_PASS 
@@ -30,7 +25,6 @@ const createEnvTransporter = () => {
     tls: { 
       rejectUnauthorized: true 
     },
-    // Force IPv4 to prevent Render connection timeout errors (ENETUNREACH)
     family: 4
   };
 
