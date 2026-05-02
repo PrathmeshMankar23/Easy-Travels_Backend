@@ -3,6 +3,10 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import dns from "dns";
+
+// FORCE IPv4 globally to prevent ENETUNREACH errors on cloud platforms like Render
+dns.setDefaultResultOrder("ipv4first");
 
 // ROUTES
 import enquiryRoutes from "./routes/enquiryRoutes.js";

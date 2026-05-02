@@ -33,7 +33,8 @@ const createEnvTransporter = () => {
       rejectUnauthorized: false 
     },
     connectionTimeout: 15000, // Increased timeout for slow cloud connections
-    greetingTimeout: 15000
+    greetingTimeout: 15000,
+    family: 4 // Force IPv4
   };
 
   envTransporter = nodemailer.createTransport(options);
