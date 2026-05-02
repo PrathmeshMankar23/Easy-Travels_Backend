@@ -14,33 +14,29 @@ const createEnvTransporter = () => {
   
   const { SMTP_USER, SMTP_PASS, SMTP_HOST, SMTP_PORT } = process.env;
   
-  if (!SMTP_USER || !SMTP_PASS) {
-    console.warn("⚠️ SMTP credentials missing. Email delivery might fail or fallback to Resend.");
-    return null;
-  }
+  if (!SMTP_USER || !SMTP_PASS) return null;
 
   const port = Number(SMTP_PORT ?? 465);
   
   const options = {
     host: SMTP_HOST || 'smtp.gmail.com',
     port,
-    secure: port === 465, // true for 465, false for 587
+    secure: port === 465,
+    requireTLS: port === 587,
     auth: { 
       user: SMTP_USER, 
       pass: SMTP_PASS 
     },
     tls: { 
-      // Bypass self-signed certificate issues often found in cloud environments
-      rejectUnauthorized: false,
-      minVersion: 'TLSv1.2'
+      rejectUnauthorized: true 
     },
-    // Force IPv4 as cloud environments often have issues reaching Gmail via IPv6
-    family: 4 
+    // Force IPv4 to prevent Render connection timeout errors (ENETUNREACH)
+    family: 4
   };
 
   envTransporter = nodemailer.createTransport(options);
   
-  // Verify connection once on creation
+  // Verify connection
   envTransporter.verify((error) => {
     if (error) {
       console.error("❌ SMTP Connection Error:", error.message);
