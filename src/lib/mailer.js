@@ -30,7 +30,9 @@ const createEnvTransporter = () => {
     },
     tls: {
       rejectUnauthorized: false
-    }
+    },
+    logger: true,
+    debug: true
   });
   
   // Verify connection
