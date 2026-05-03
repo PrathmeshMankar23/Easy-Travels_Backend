@@ -19,32 +19,35 @@ if (!SMTP_USER || !SMTP_PASS) {
   console.error("❌ SMTP_USER / SMTP_PASS is missing. Emails will fail until env values are set.");
 }
 
-// Render/hosted environments can be strict about TLS handshakes.
-const tlsOptions = SMTP_SECURE
-  ? { servername: SMTP_HOST, minVersion: "TLSv1.2" }
-  : { servername: SMTP_HOST, minVersion: "TLSv1.2" };
+const createTransporter = (port, secure) =>
+  nodemailer.createTransport({
+    host: SMTP_HOST,
+    port,
+    secure,
+    requireTLS: !secure,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+    },
+    // Hosted providers can be strict about modern TLS only.
+    tls: { servername: SMTP_HOST, minVersion: "TLSv1.2" },
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 45000,
+    logger: false,
+    debug: false,
+  });
 
-const transporter = nodemailer.createTransport({
-  host: SMTP_HOST,
-  port: SMTP_PORT,
-  secure: SMTP_SECURE,
-  requireTLS: !SMTP_SECURE,
-  auth: {
-    user: SMTP_USER,
-    pass: SMTP_PASS,
-  },
-  tls: tlsOptions,
-  connectionTimeout: 30000,
-  greetingTimeout: 30000,
-  socketTimeout: 45000,
-  logger: false,
-  debug: false,
-});
+const primaryTransporter = createTransporter(SMTP_PORT, SMTP_SECURE);
+const fallbackPort = SMTP_PORT === 465 ? 587 : 465;
+const fallbackSecure = fallbackPort === 465;
+const fallbackTransporter = createTransporter(fallbackPort, fallbackSecure);
 
 // Verify connection immediately
-transporter.verify((error) => {
+primaryTransporter.verify((error) => {
   if (error) {
-    console.error("❌ SMTP Connection Error:", error.message);
+    console.error("❌ SMTP Connection Error (primary):", error.message);
+    console.log(`ℹ️ Will fallback to SMTP ${SMTP_HOST}:${fallbackPort} when needed.`);
   } else {
     console.log("✅ SMTP Transporter is ready to deliver messages");
   }
@@ -55,7 +58,7 @@ transporter.verify((error) => {
  */
 export const sendMail = async ({ to, subject, html, fromName = "Travel Website" }) => {
   try {
-    const info = await transporter.sendMail({
+    const info = await primaryTransporter.sendMail({
       from: `"${fromName}" <${SMTP_FROM}>`,
       to,
       subject,
@@ -66,8 +69,32 @@ export const sendMail = async ({ to, subject, html, fromName = "Travel Website" 
     return info;
 
   } catch (error) {
-    console.error("❌ Email sending failed:", error.message);
-    throw error;
+    const errorCode = error?.code || "";
+    const shouldRetry = ["ETIMEDOUT", "ESOCKET", "ECONNECTION", "ECONNRESET"].includes(errorCode);
+
+    if (!shouldRetry) {
+      console.error("❌ Email sending failed:", error.message);
+      throw error;
+    }
+
+    console.warn(
+      `⚠️ Primary SMTP failed (${errorCode || "unknown"}). Retrying with ${SMTP_HOST}:${fallbackPort}...`
+    );
+
+    try {
+      const fallbackInfo = await fallbackTransporter.sendMail({
+        from: `"${fromName}" <${SMTP_FROM}>`,
+        to,
+        subject,
+        html,
+      });
+
+      console.log("📧 Email sent successfully via fallback SMTP →", fallbackInfo.messageId);
+      return fallbackInfo;
+    } catch (fallbackError) {
+      console.error("❌ Email sending failed after fallback:", fallbackError.message);
+      throw fallbackError;
+    }
   }
 };
 
