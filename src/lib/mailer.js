@@ -12,43 +12,41 @@ const SMTP_USER = getEnv("SMTP_USER");
 const SMTP_PASS = getEnv("SMTP_PASS");
 const SMTP_HOST = getEnv("SMTP_HOST", "smtp.gmail.com");
 const SMTP_PORT = Number(getEnv("SMTP_PORT", "465"));
-const SMTP_SECURE = getEnv("SMTP_SECURE", SMTP_PORT === 465 ? "true" : "false") === "true";
 const SMTP_FROM = getEnv("SMTP_FROM", SMTP_USER);
 
 if (!SMTP_USER || !SMTP_PASS) {
   console.error("❌ SMTP_USER / SMTP_PASS is missing. Emails will fail until env values are set.");
 }
 
-const createTransporter = (port, secure) =>
-  nodemailer.createTransport({
+let envTransporter = null;
+const createEnvTransporter = () => {
+  if (envTransporter) return envTransporter;
+  if (!SMTP_USER || !SMTP_PASS) return null;
+
+  const options = {
     host: SMTP_HOST,
-    port,
+    port: SMTP_PORT,
     family: 4,
-    secure,
-    requireTLS: !secure,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-    // Hosted providers can be strict about modern TLS only.
-    tls: { servername: SMTP_HOST, minVersion: "TLSv1.2" },
+    secure: SMTP_PORT === 465,
+    requireTLS: SMTP_PORT === 587,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    tls: { rejectUnauthorized: true, servername: SMTP_HOST, minVersion: "TLSv1.2" },
     connectionTimeout: 30000,
     greetingTimeout: 30000,
     socketTimeout: 45000,
     logger: false,
     debug: false,
-  });
+  };
 
-const primaryTransporter = createTransporter(SMTP_PORT, SMTP_SECURE);
-const fallbackPort = SMTP_PORT === 465 ? 587 : 465;
-const fallbackSecure = fallbackPort === 465;
-const fallbackTransporter = createTransporter(fallbackPort, fallbackSecure);
+  envTransporter = nodemailer.createTransport(options);
+  return envTransporter;
+};
 
 // Verify connection immediately
-primaryTransporter.verify((error) => {
+const transporter = createEnvTransporter();
+transporter?.verify((error) => {
   if (error) {
-    console.error("❌ SMTP Connection Error (primary):", error.message);
-    console.log(`ℹ️ Will fallback to SMTP ${SMTP_HOST}:${fallbackPort} when needed.`);
+    console.error("❌ SMTP Connection Error:", error.message);
   } else {
     console.log("✅ SMTP Transporter is ready to deliver messages");
   }
@@ -58,8 +56,13 @@ primaryTransporter.verify((error) => {
  * General purpose mail sender
  */
 export const sendMail = async ({ to, subject, html, fromName = "Travel Website" }) => {
+  const mailTransporter = createEnvTransporter();
+  if (!mailTransporter) {
+    throw new Error("SMTP transporter is not configured. Missing SMTP_USER/SMTP_PASS.");
+  }
+
   try {
-    const info = await primaryTransporter.sendMail({
+    const info = await mailTransporter.sendMail({
       from: `"${fromName}" <${SMTP_FROM}>`,
       to,
       subject,
@@ -70,32 +73,8 @@ export const sendMail = async ({ to, subject, html, fromName = "Travel Website" 
     return info;
 
   } catch (error) {
-    const errorCode = error?.code || "";
-    const shouldRetry = ["ETIMEDOUT", "ESOCKET", "ECONNECTION", "ECONNRESET"].includes(errorCode);
-
-    if (!shouldRetry) {
-      console.error("❌ Email sending failed:", error.message);
-      throw error;
-    }
-
-    console.warn(
-      `⚠️ Primary SMTP failed (${errorCode || "unknown"}). Retrying with ${SMTP_HOST}:${fallbackPort}...`
-    );
-
-    try {
-      const fallbackInfo = await fallbackTransporter.sendMail({
-        from: `"${fromName}" <${SMTP_FROM}>`,
-        to,
-        subject,
-        html,
-      });
-
-      console.log("📧 Email sent successfully via fallback SMTP →", fallbackInfo.messageId);
-      return fallbackInfo;
-    } catch (fallbackError) {
-      console.error("❌ Email sending failed after fallback:", fallbackError.message);
-      throw fallbackError;
-    }
+    console.error("❌ Email sending failed:", error.message);
+    throw error;
   }
 };
 
