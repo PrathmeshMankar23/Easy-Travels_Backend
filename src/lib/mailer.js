@@ -19,6 +19,11 @@ if (!SMTP_USER || !SMTP_PASS) {
 }
 
 let envTransporter = null;
+const lookupIPv4 = (hostname, options, callback) => {
+  const normalized = typeof options === "object" && options ? options : {};
+  return dns.lookup(hostname, { ...normalized, family: 4, all: false }, callback);
+};
+
 const createEnvTransporter = () => {
   if (envTransporter) return envTransporter;
   if (!SMTP_USER || !SMTP_PASS) return null;
@@ -26,7 +31,7 @@ const createEnvTransporter = () => {
   const options = {
     host: SMTP_HOST,
     port: SMTP_PORT,
-    family: 4,
+    lookup: lookupIPv4,
     secure: SMTP_PORT === 465,
     requireTLS: SMTP_PORT === 587,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
