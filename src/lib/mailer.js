@@ -1,6 +1,5 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
-import { Resend } from "resend";
 import dns from "dns";
 
 // Force IPv4 as cloud environments like Render often have issues with IPv6 routing
@@ -8,21 +7,38 @@ dns.setDefaultResultOrder("ipv4first");
 
 dotenv.config();
 
-const { SMTP_USER, SMTP_PASS, SMTP_HOST, SMTP_PORT } = process.env;
+const getEnv = (key, fallback = "") => (process.env[key] || fallback).toString().trim();
+const SMTP_USER = getEnv("SMTP_USER");
+const SMTP_PASS = getEnv("SMTP_PASS");
+const SMTP_HOST = getEnv("SMTP_HOST", "smtp.gmail.com");
+const SMTP_PORT = Number(getEnv("SMTP_PORT", "465"));
+const SMTP_SECURE = getEnv("SMTP_SECURE", SMTP_PORT === 465 ? "true" : "false") === "true";
+const SMTP_FROM = getEnv("SMTP_FROM", SMTP_USER);
 
-// Create transporter at top level like GigFactory
-const port = Number(SMTP_PORT) || 465;
+if (!SMTP_USER || !SMTP_PASS) {
+  console.error("❌ SMTP_USER / SMTP_PASS is missing. Emails will fail until env values are set.");
+}
+
+// Render/hosted environments can be strict about TLS handshakes.
+const tlsOptions = SMTP_SECURE
+  ? { servername: SMTP_HOST, minVersion: "TLSv1.2" }
+  : { servername: SMTP_HOST, minVersion: "TLSv1.2" };
 
 const transporter = nodemailer.createTransport({
-  host: SMTP_HOST || 'smtp.gmail.com',
-  port,
-  secure: port === 465,   // ✅ FIXED
+  host: SMTP_HOST,
+  port: SMTP_PORT,
+  secure: SMTP_SECURE,
+  requireTLS: !SMTP_SECURE,
   auth: {
     user: SMTP_USER,
     pass: SMTP_PASS,
   },
-  logger: true,
-  debug: true
+  tls: tlsOptions,
+  connectionTimeout: 30000,
+  greetingTimeout: 30000,
+  socketTimeout: 45000,
+  logger: false,
+  debug: false,
 });
 
 // Verify connection immediately
@@ -40,7 +56,7 @@ transporter.verify((error) => {
 export const sendMail = async ({ to, subject, html, fromName = "Travel Website" }) => {
   try {
     const info = await transporter.sendMail({
-      from: `"${fromName}" <${SMTP_USER}>`,
+      from: `"${fromName}" <${SMTP_FROM}>`,
       to,
       subject,
       html,
