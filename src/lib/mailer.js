@@ -11,16 +11,15 @@ dotenv.config();
 const { SMTP_USER, SMTP_PASS, SMTP_HOST, SMTP_PORT } = process.env;
 
 // Create transporter at top level like GigFactory
+const port = Number(SMTP_PORT) || 465;
+
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST || 'smtp.gmail.com',
-  port: Number(SMTP_PORT) || 465,
-  secure: Number(SMTP_PORT) === 465,
+  port,
+  secure: port === 465,   // ✅ FIXED
   auth: {
     user: SMTP_USER,
     pass: SMTP_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false
   },
   logger: true,
   debug: true
