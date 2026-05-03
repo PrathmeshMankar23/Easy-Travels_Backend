@@ -30,18 +30,18 @@ const createEnvTransporter = () => {
 
   const options = {
     host: SMTP_HOST,
-    port: SMTP_PORT,
-    family: 4,            
-    lookup: lookupIPv4,
-    secure: SMTP_PORT === 465,
-    requireTLS: SMTP_PORT === 587,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-    tls: {  servername: SMTP_HOST },
+    port: SMTP_PORT,        // should be 587 in Render
+    family: 4,              // force IPv4
+    secure: false,          // ✅ IMPORTANT for port 587
+    auth: { 
+      user: SMTP_USER, 
+      pass: SMTP_PASS 
+    },
     connectionTimeout: 30000,
     greetingTimeout: 30000,
     socketTimeout: 45000,
-    logger: false,
-    debug: false,
+    logger: true,           // enable logs for debugging
+    debug: true,
   };
 
   envTransporter = nodemailer.createTransport(options);
