@@ -31,11 +31,12 @@ const createEnvTransporter = () => {
   const options = {
     host: SMTP_HOST,
     port: SMTP_PORT,
+    family: 4,            
     lookup: lookupIPv4,
     secure: SMTP_PORT === 465,
     requireTLS: SMTP_PORT === 587,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
-    tls: { rejectUnauthorized: true, servername: SMTP_HOST, minVersion: "TLSv1.2" },
+    tls: {  servername: SMTP_HOST },
     connectionTimeout: 30000,
     greetingTimeout: 30000,
     socketTimeout: 45000,
