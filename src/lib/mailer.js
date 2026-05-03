@@ -23,6 +23,7 @@ const createTransporter = (port, secure) =>
   nodemailer.createTransport({
     host: SMTP_HOST,
     port,
+    family: 4,
     secure,
     requireTLS: !secure,
     auth: {
