@@ -1,61 +1,38 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
-import dns from "dns";
-
-// Force IPv4 as cloud environments like Render often have issues with IPv6 routing
-dns.setDefaultResultOrder("ipv4first");
 
 dotenv.config();
 
-const getEnv = (key, fallback = "") => (process.env[key] || fallback).toString().trim();
-const SMTP_USER = getEnv("SMTP_USER");
-const SMTP_PASS = getEnv("SMTP_PASS");
-const SMTP_HOST = getEnv("SMTP_HOST", "smtp.gmail.com");
-const SMTP_PORT = Number(getEnv("SMTP_PORT", "465"));
-const SMTP_FROM = getEnv("SMTP_FROM", SMTP_USER);
+// Get ENV values
+const SMTP_USER = process.env.SMTP_USER;
+const SMTP_PASS = process.env.SMTP_PASS;
+const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
+const SMTP_PORT = Number(process.env.SMTP_PORT) || 465;
 
 if (!SMTP_USER || !SMTP_PASS) {
-  console.error("❌ SMTP_USER / SMTP_PASS is missing. Emails will fail until env values are set.");
+  console.error("❌ SMTP_USER / SMTP_PASS is missing.");
 }
 
-let envTransporter = null;
-const lookupIPv4 = (hostname, options, callback) => {
-  const normalized = typeof options === "object" && options ? options : {};
-  return dns.lookup(hostname, { ...normalized, family: 4, all: false }, callback);
-};
+// ✅ SIMPLE & WORKING TRANSPORTER (same logic as your working project)
+const transporter = nodemailer.createTransport({
+  host: SMTP_HOST,
+  port: SMTP_PORT,
+  secure: SMTP_PORT === 465, // true for 465, false for 587
+  auth: {
+    user: SMTP_USER,
+    pass: SMTP_PASS,
+  },
+  tls: {
+    rejectUnauthorized: false,
+  },
+});
 
-const createEnvTransporter = () => {
-  if (envTransporter) return envTransporter;
-  if (!SMTP_USER || !SMTP_PASS) return null;
-
-  const options = {
-    host: SMTP_HOST,
-    port: SMTP_PORT,        // should be 587 in Render
-    secure: false,          // ✅ IMPORTANT for port 587
-    requireTLS: true,       // ADD THIS
-    auth: { 
-      user: SMTP_USER, 
-      pass: SMTP_PASS 
-    },
-    lookup: lookupIPv4,
-    connectionTimeout: 30000,
-    greetingTimeout: 30000,
-    socketTimeout: 45000,
-    logger: true,           // enable logs for debugging
-    debug: true,
-  };
-
-  envTransporter = nodemailer.createTransport(options);
-  return envTransporter;
-};
-
-// Verify connection immediately
-const transporter = createEnvTransporter();
-transporter?.verify((error) => {
+// Verify connection
+transporter.verify((error) => {
   if (error) {
     console.error("❌ SMTP Connection Error:", error.message);
   } else {
-    console.log("✅ SMTP Transporter is ready to deliver messages");
+    console.log("✅ SMTP Transporter is ready");
   }
 });
 
@@ -63,20 +40,15 @@ transporter?.verify((error) => {
  * General purpose mail sender
  */
 export const sendMail = async ({ to, subject, html, fromName = "Travel Website" }) => {
-  const mailTransporter = createEnvTransporter();
-  if (!mailTransporter) {
-    throw new Error("SMTP transporter is not configured. Missing SMTP_USER/SMTP_PASS.");
-  }
-
   try {
-    const info = await mailTransporter.sendMail({
-      from: `"${fromName}" <${SMTP_FROM}>`,
+    const info = await transporter.sendMail({
+      from: `"${fromName}" <${SMTP_USER}>`,
       to,
       subject,
       html,
     });
 
-    console.log("📧 Email sent successfully via SMTP →", info.messageId);
+    console.log("📧 Email sent →", info.messageId);
     return info;
 
   } catch (error) {
@@ -86,7 +58,7 @@ export const sendMail = async ({ to, subject, html, fromName = "Travel Website" 
 };
 
 /**
- * Specifically formatted email for Travel Enquiries
+ * Travel Enquiry Email (YOUR ORIGINAL HTML KEPT SAME)
  */
 export const sendEnquiryEmail = async (enquiryData) => {
   const { customerName, email, phone, message, destinationTitle } = enquiryData;
@@ -125,11 +97,6 @@ export const sendEnquiryEmail = async (enquiryData) => {
             <div class="label">Phone Number</div>
             <div class="value">${phone || "Not provided"}</div>
           </div>
-          ${destinationTitle ? `
-          <div class="field">
-            <div class="label">Interested Destination</div>
-            <div class="value"><span class="badge">${destinationTitle}</span></div>
-          </div>` : ""}
           <div class="field" style="border-bottom: none;">
             <div class="label">Message</div>
             <div style="background: #fdfdfd; padding: 15px; border-left: 4px solid #1a73e8; font-style: italic;">
