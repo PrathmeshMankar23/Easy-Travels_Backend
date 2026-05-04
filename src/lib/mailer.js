@@ -31,12 +31,13 @@ const createEnvTransporter = () => {
   const options = {
     host: SMTP_HOST,
     port: SMTP_PORT,        // should be 587 in Render
-    family: 4,              // force IPv4
     secure: false,          // ✅ IMPORTANT for port 587
+    requireTLS: true,       // ADD THIS
     auth: { 
       user: SMTP_USER, 
       pass: SMTP_PASS 
     },
+    lookup: lookupIPv4,
     connectionTimeout: 30000,
     greetingTimeout: 30000,
     socketTimeout: 45000,
